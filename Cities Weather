@@ -1,0 +1,101 @@
+!pip install requests
+
+
+## your api key
+%python
+import os
+os.environ["api_key"] = "tour-api-key"
+
+# main code
+
+import os
+import requests
+import pandas as pd
+import matplotlib.pyplot as plt
+
+class Weather:
+
+    def __init__(self, cities):
+        self.cities = cities
+        self.base_url = "http://api.openweathermap.org/data/2.5/weather?"
+        self.api_key = os.environ["api_key"]
+        self.weather_data = []
+        self.df_resumed = None
+
+    def extract_data(self):
+        for city in self.cities:
+            url = f"{self.base_url}appid={self.api_key}&q={city}"
+            response = requests.get(url).json()
+            self.weather_data.append(response)
+        dataframe = pd.json_normalize(self.weather_data)
+        self.df_resumed = dataframe[['name','main.temp_max', 'main.temp_min', 'main.temp']]
+        return self.df_resumed  
+    
+    def extract_temp(self):
+        if self.df_resumed is None:
+            raise ValueError("Dataframe not yet extracted. Call extract_data method first.")
+
+        # Main temperature
+        df_temp_main = self.df_resumed[['name','main.temp']].copy()
+        df_temp_main['main.temp'] = df_temp_main['main.temp'] - 273.5
+        x_main = df_temp_main['name']
+        y_main = df_temp_main['main.temp']
+
+        # Min temperature
+        df_temp_min = self.df_resumed[['name','main.temp_min']].copy()
+        df_temp_min['main.temp_min'] = df_temp_min['main.temp_min'] - 273.5
+        x_min = df_temp_min['name']
+        y_min = df_temp_min['main.temp_min']
+
+        # Max temperature
+        df_temp_max = self.df_resumed[['name','main.temp_max']].copy()
+        df_temp_max['main.temp_max'] = df_temp_max['main.temp_max'] - 273.5
+        x_max = df_temp_max['name']
+        y_max = df_temp_max['main.temp_max']
+
+        # Create a new figure with three subplots
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(16, 6))
+
+        # Plot main temperature
+        bars_main = ax1.bar(x_main, y_main, color='limegreen')
+        ax1.set_title("Main temperature")
+        for bar in bars_main:
+            yval = bar.get_height()
+            ax1.text(bar.get_x() + bar.get_width()/2, yval, round(yval, 2), ha='center', va='bottom')
+        ax1.spines['top'].set_visible(False)
+        ax1.spines['right'].set_visible(False)
+
+        # Plot minimum temperature
+        bars_min = ax2.bar(x_min, y_min, color='skyblue')
+        ax2.set_title("Minimum temperature")
+        for bar in bars_min:
+            yval = bar.get_height()
+            ax2.text(bar.get_x() + bar.get_width()/2, yval, round(yval, 2), ha='center', va='bottom')
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
+
+        # Plot maximum temperature
+        bars_max = ax3.bar(x_max, y_max, color='orange')
+        ax3.set_title("Maximum temperature")
+        for bar in bars_max:
+            yval = bar.get_height()
+            ax3.text(bar.get_x() + bar.get_width()/2, yval, round(yval, 2), ha='center', va='bottom')
+        ax3.spines['top'].set_visible(False)
+        ax3.spines['right'].set_visible(False)
+
+        # Adjust layout and show the plot
+        plt.tight_layout()
+        plt.show()
+
+
+# Instantiate Weather class with cities list
+weather = Weather(["Rio de Janeiro", "São Paulo","Florianopolis", "London","Paris", "Tokyo"])
+
+# Call extract_data method to fetch weather data
+weather_data = weather.extract_data()
+
+# Call extract_data method to fetch weather data
+weather_temp = weather.extract_temp()
+
+# Display the DataFrame
+weather_temp
